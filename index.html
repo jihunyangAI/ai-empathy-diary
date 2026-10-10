@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 공감 다이어리</title>
+<meta name="description" content="오늘 있었던 일을 한 줄로 적으면 AI가 마음을 읽고 다정한 말을 건네는 일기장">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📔%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Nanum+Pen+Script&display=swap">
+<style>
+  :root {
+    /* 색상 */
+    --color-paper: #fbf5ea;
+    --color-paper-deep: #f3e8d4;
+    --color-card: #fffaf2;
+    --color-ink: #3f2c22;
+    --color-ink-soft: #6b5243;
+    --color-line: #e6d4bb;
+    --color-line-strong: #d2b994;
+    --color-apricot: #f6c9a0;
+    --color-coral: #e88a6e;
+    --color-coral-dark: #a6492f;
+    --color-coral-darker: #8a3b25;
+    --color-brown: #7a5235;
+    --color-danger: #9c2f22;
+    --color-danger-bg: #fbe6e1;
+    --color-ok: #3f7a4a;
+    --color-warn: #8a5a12;
+    --color-off: #9c2f22;
+    --color-focus: #c2562f;
+    --color-heart-empty: #e7d6c3;
+
+    /* 글꼴 */
+    --font-body: "Gowun Dodum", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+    --font-hand: "Nanum Pen Script", "Gowun Dodum", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+    /* 간격 */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.5rem;
+    --space-6: 2rem;
+
+    /* 모양 */
+    --radius-s: 10px;
+    --radius-m: 16px;
+    --radius-l: 24px;
+    --radius-pill: 999px;
+    --shadow-soft: 0 2px 6px rgba(122, 82, 53, 0.08), 0 8px 24px rgba(122, 82, 53, 0.08);
+    --shadow-lift: 0 4px 10px rgba(122, 82, 53, 0.12), 0 14px 32px rgba(122, 82, 53, 0.12);
+    --line-height-note: 2.25rem;
+
+    /* 감정 카드 기본 톤 (JS가 감정별로 덮어씀) */
+    --emo-bg: #fff4e6;
+    --emo-accent: #e8a77a;
+    --emo-tag: #fde3cc;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  [hidden] { display: none !important; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-ink);
+    background-color: var(--color-paper);
+    /* 종이 질감: 은은한 얼룩 + 노이즈 (오프라인에서도 동작하는 인라인 SVG) */
+    background-image:
+      radial-gradient(ellipse at 15% 10%, rgba(246, 201, 160, 0.25), transparent 55%),
+      radial-gradient(ellipse at 90% 85%, rgba(232, 138, 110, 0.12), transparent 50%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.48 0 0 0 0 0.32 0 0 0 0 0.2 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  .visually-hidden {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; border: 0;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  .skip-link {
+    position: absolute;
+    left: var(--space-4);
+    top: -100px;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-ink);
+    color: var(--color-card);
+    border-radius: var(--radius-s);
+    z-index: 10;
+  }
+  .skip-link:focus { top: var(--space-4); }
+
+  .page {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: var(--space-5) var(--space-4) var(--space-6);
+  }
+
+  /* ---------- 상단 ---------- */
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+  .top__text { min-width: 0; flex: 1 1 260px; }
+  .top__date {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-ink-soft);
+    letter-spacing: 0.02em;
+  }
+  .top__title {
+    margin: var(--space-1) 0 0;
+    font-family: var(--font-hand);
+    font-weight: 400;
+    font-size: clamp(2.1rem, 7vw, 2.8rem);
+    line-height: 1.15;
+    color: var(--color-brown);
+  }
+  .top__greeting {
+    margin: var(--space-2) 0 0;
+    color: var(--color-ink-soft);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--color-ink-soft);
+    background: var(--color-card);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-soft);
+    cursor: pointer;
+  }
+  .status:hover { border-color: var(--color-line-strong); }
+  .status__dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--color-line-strong);
+    flex: none;
+  }
+  .status[data-state="ok"] .status__dot { background: var(--color-ok); }
+  .status[data-state="warn"] .status__dot { background: #d18a1f; }
+  .status[data-state="off"] .status__dot { background: var(--color-off); }
+  .status[data-state="checking"] .status__dot { animation: pulse 1.2s ease-in-out infinite; }
+
+  /* ---------- 공통 카드 ---------- */
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-soft);
+    padding: var(--space-5);
+  }
+  .section-title {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-hand);
+    font-weight: 400;
+    font-size: 1.75rem;
+    line-height: 1.2;
+    color: var(--color-brown);
+  }
+
+  /* ---------- 입력 ---------- */
+  .write__label {
+    display: block;
+    margin-bottom: var(--space-2);
+    font-family: var(--font-hand);
+    font-size: 1.6rem;
+    line-height: 1.2;
+    color: var(--color-brown);
+  }
+  .write__hint {
+    margin: 0 0 var(--space-3);
+    font-size: 0.85rem;
+    color: var(--color-ink-soft);
+  }
+  .note {
+    display: block;
+    width: 100%;
+    min-height: calc(var(--line-height-note) * 2 + 0.5rem);
+    padding: 0.25rem var(--space-2);
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    line-height: var(--line-height-note);
+    color: var(--color-ink);
+    resize: vertical;
+    border: none;
+    border-left: 3px solid rgba(232, 138, 110, 0.45);
+    border-radius: 0 var(--radius-s) var(--radius-s) 0;
+    background-color: #fffdf8;
+    /* 줄노트 */
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--line-height-note) - 1px),
+      var(--color-line) calc(var(--line-height-note) - 1px),
+      var(--color-line) var(--line-height-note)
+    );
+    background-position: 0 0.25rem;
+    background-attachment: local;
+  }
+  .note::placeholder { color: #8f7665; opacity: 1; }
+  .note:focus-visible { outline-offset: 2px; border-radius: var(--radius-s); }
+  .note[aria-invalid="true"] { border-left-color: var(--color-danger); }
+
+  .write__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+  .counter {
+    font-size: 0.85rem;
+    color: var(--color-ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .counter[data-level="near"] { color: var(--color-warn); }
+  .counter[data-level="over"] { color: var(--color-danger); font-weight: 700; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    padding: var(--space-2) var(--space-5);
+    font: inherit;
+    font-size: 1rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .btn--primary {
+    color: #fff;
+    background: var(--color-coral-dark);
+    box-shadow: 0 3px 0 var(--color-coral-darker);
+  }
+  .btn--primary:hover:not(:disabled) { background: var(--color-coral-darker); }
+  .btn--primary:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--color-coral-darker); }
+  .btn:disabled { cursor: not-allowed; opacity: 0.6; }
+  .btn--ghost {
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    font-size: 0.85rem;
+    color: var(--color-ink-soft);
+    background: transparent;
+    border-color: var(--color-line-strong);
+  }
+  .btn--ghost:hover { background: var(--color-paper-deep); color: var(--color-ink); }
+  .btn--danger {
+    min-height: 36px;
+    padding: var(--space-1) var(--space-3);
+    font-size: 0.85rem;
+    color: #fff;
+    background: var(--color-danger);
+  }
+  .btn--danger:hover { background: #7d241a; }
+
+  .error {
+    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-danger);
+    background: var(--color-danger-bg);
+    border-radius: var(--radius-s);
+    font-size: 0.95rem;
+  }
+  .error code {
+    padding: 0 0.3em;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 0.9em;
+    color: var(--color-ink);
+  }
+  .error:empty { display: none; }
+
+  /* ---------- 로딩 ---------- */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+    padding: var(--space-5);
+    text-align: center;
+    color: var(--color-ink-soft);
+  }
+  .loading__hearts { display: flex; gap: var(--space-2); }
+  .loading__hearts span {
+    font-size: 1.3rem;
+    color: var(--color-coral);
+    animation: float 1.4s ease-in-out infinite;
+  }
+  .loading__hearts span:nth-child(2) { animation-delay: 0.2s; }
+  .loading__hearts span:nth-child(3) { animation-delay: 0.4s; }
+  .loading__text {
+    margin: 0;
+    font-family: var(--font-hand);
+    font-size: 1.6rem;
+  }
+
+  /* ---------- 결과 카드 ---------- */
+  .result { margin-top: var(--space-5); }
+  .result-card {
+    position: relative;
+    padding: var(--space-5);
+    background: var(--emo-bg);
+    border: 1px solid color-mix(in srgb, var(--emo-accent) 45%, transparent);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-lift);
+    animation: rise 0.45s ease-out;
+    overflow-wrap: anywhere;
+  }
+  .result-card::before {
+    /* 마스킹 테이프 장식 */
+    content: "";
+    position: absolute;
+    top: -12px; left: 50%;
+    width: 96px; height: 24px;
+    transform: translateX(-50%) rotate(-3deg);
+    background: color-mix(in srgb, var(--emo-accent) 40%, rgba(255, 255, 255, 0.6));
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+  .result-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  .result-card__emoji {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 88px; height: 88px;
+    font-size: 3.2rem;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--emo-accent) 35%, transparent);
+  }
+  .result-card__meta { min-width: 0; }
+  .result-card__kicker { margin: 0; font-size: 0.85rem; color: var(--color-ink-soft); }
+  .result-card__emotion {
+    margin: 0;
+    font-family: var(--font-hand);
+    font-weight: 400;
+    font-size: 2.3rem;
+    line-height: 1.1;
+    color: var(--color-ink);
+  }
+  .intensity {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: var(--space-1);
+    font-size: 1.15rem;
+    line-height: 1;
+  }
+  .intensity__heart { color: var(--color-heart-empty); }
+  .intensity__heart.is-on { color: var(--emo-accent); filter: saturate(1.2) brightness(0.9); }
+  .intensity__label { margin-left: var(--space-2); font-size: 0.8rem; color: var(--color-ink-soft); }
+
+  .original {
+    margin: var(--space-4) 0 0;
+    padding: var(--space-3) var(--space-4);
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: var(--radius-s);
+    color: var(--color-ink-soft);
+    font-size: 0.95rem;
+  }
+  .original::before { content: "“"; margin-right: 0.1em; }
+  .original::after { content: "”"; margin-left: 0.1em; }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .tags li {
+    padding: 0.15rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--color-ink);
+    background: var(--emo-tag);
+    border-radius: var(--radius-pill);
+  }
+  .tags li::before { content: "#"; opacity: 0.6; margin-right: 1px; }
+
+  .letter {
+    margin-top: var(--space-4);
+    padding: var(--space-4) var(--space-4) var(--space-3);
+    background-color: #fffdf8;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(2rem - 1px),
+      rgba(210, 185, 148, 0.45) calc(2rem - 1px),
+      rgba(210, 185, 148, 0.45) 2rem
+    );
+    background-position: 0 var(--space-4);
+    border-radius: var(--radius-m);
+    box-shadow: 0 1px 3px rgba(122, 82, 53, 0.08);
+  }
+  .letter__to {
+    margin: 0;
+    font-family: var(--font-hand);
+    font-size: 1.4rem;
+    line-height: 2rem;
+    color: var(--color-brown);
+  }
+  .letter__body {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 2rem;
+    white-space: pre-line;
+  }
+  .letter__from {
+    margin: var(--space-2) 0 0;
+    text-align: right;
+    font-family: var(--font-hand);
+    font-size: 1.3rem;
+    line-height: 2rem;
+    color: var(--color-brown);
+  }
+
+  .help {
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    background: #f2f6fb;
+    border: 1px solid #c9d6e6;
+    border-left: 5px solid #5c7fa8;
+    border-radius: var(--radius-m);
+    color: #26384d;
+  }
+  .help__title { margin: 0 0 var(--space-2); font-size: 1rem; font-weight: 700; }
+  .help p { margin: 0 0 var(--space-2); font-size: 0.95rem; }
+  .help ul { margin: 0; padding-left: 1.2rem; }
+  .help li { margin: var(--space-1) 0; }
+  .help a { color: #1f4f86; font-weight: 700; }
+
+  /* ---------- 감정 타임라인 ---------- */
+  .timeline-wrap { margin-top: var(--space-5); }
+  .timeline {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-1);
+    margin: 0;
+    padding: var(--space-3) var(--space-2) 0;
+    list-style: none;
+    position: relative;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: var(--space-4); right: var(--space-4);
+    top: calc(var(--space-3) + 22px);
+    border-top: 2px dashed var(--color-line-strong);
+  }
+  .timeline li {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    text-align: center;
+  }
+  .timeline__emoji {
+    display: grid;
+    place-items: center;
+    width: 44px; height: 44px;
+    font-size: 1.5rem;
+    background: var(--color-card);
+    border: 2px solid var(--color-line);
+    border-radius: 50%;
+  }
+  .timeline__label {
+    font-size: 0.72rem;
+    color: var(--color-ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  /* ---------- 지난 일기 ---------- */
+  .history { margin-top: var(--space-5); }
+  .history__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  .history__head .section-title { margin: 0; }
+  .history__head .section-title:focus { outline: none; }
+  .confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-danger-bg);
+    border-radius: var(--radius-m);
+    font-size: 0.9rem;
+    color: var(--color-danger);
+  }
+  .confirm[hidden] { display: none; }
+  .empty {
+    margin: 0;
+    padding: var(--space-5) var(--space-4);
+    text-align: center;
+    color: var(--color-ink-soft);
+    border: 2px dashed var(--color-line);
+    border-radius: var(--radius-m);
+  }
+  .entries { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-3); }
+  .entry {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--space-3);
+    align-items: start;
+    padding: var(--space-3) var(--space-4);
+    background: var(--emo-bg);
+    border: 1px solid color-mix(in srgb, var(--emo-accent) 30%, transparent);
+    border-radius: var(--radius-m);
+    overflow-wrap: anywhere;
+  }
+  .entry__emoji { font-size: 1.8rem; line-height: 1.2; }
+  .entry__body { min-width: 0; }
+  .entry__meta {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-ink-soft);
+  }
+  .entry__emotion { font-weight: 700; color: var(--color-ink); margin-right: var(--space-2); }
+  .entry__text { margin: var(--space-1) 0 0; }
+  .entry__message {
+    margin: var(--space-2) 0 0;
+    padding-left: var(--space-3);
+    border-left: 3px solid color-mix(in srgb, var(--emo-accent) 60%, transparent);
+    font-size: 0.9rem;
+    color: var(--color-ink-soft);
+    white-space: pre-line;
+  }
+  .entry__delete {
+    display: grid;
+    place-items: center;
+    width: 36px; height: 36px;
+    padding: 0;
+    font: inherit;
+    font-size: 1.1rem;
+    color: var(--color-ink-soft);
+    background: rgba(255, 255, 255, 0.6);
+    border: 1px solid var(--color-line);
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .entry__delete:hover { color: var(--color-danger); border-color: var(--color-danger); }
+
+  .footer {
+    margin-top: var(--space-6);
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--color-ink-soft);
+  }
+  .footer p { margin: var(--space-1) 0; }
+
+  /* ---------- 애니메이션 ---------- */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); opacity: 0.6; }
+    50% { transform: translateY(-8px); opacity: 1; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .loading__hearts span { opacity: 1; }
+  }
+
+  /* ---------- 반응형 ---------- */
+  @media (max-width: 420px) {
+    .page { padding: var(--space-4) var(--space-3) var(--space-5); }
+    .card, .result-card { padding: var(--space-4); }
+    .write__footer .btn--primary { flex: 1 1 100%; }
+    .result-card__emoji { width: 72px; height: 72px; font-size: 2.6rem; }
+    .timeline__emoji { width: 36px; height: 36px; font-size: 1.2rem; }
+    .timeline::before { top: calc(var(--space-3) + 18px); }
+    .entry { grid-template-columns: auto 1fr; padding: var(--space-3); }
+    .entry__delete { grid-column: 2; justify-self: end; }
+  }
+
+  @media (min-width: 768px) {
+    .page { padding-top: var(--space-6); }
+    .card, .result-card { padding: var(--space-6); }
+  }
+
+  @media (forced-colors: active) {
+    .intensity__heart.is-on { color: CanvasText; }
+    .btn { border: 1px solid ButtonText; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#diary-input">일기 쓰러 가기</a>
+
+<div class="page">
+  <header class="top">
+    <div class="top__text">
+      <p class="top__date" id="today-date"></p>
+      <h1 class="top__title">AI 공감 다이어리</h1>
+      <p class="top__greeting" id="greeting">오늘 하루는 어땠나요?</p>
+    </div>
+    <button type="button" class="status" id="server-status" data-state="checking"
+            aria-describedby="status-desc">
+      <span class="status__dot" aria-hidden="true"></span>
+      <span id="status-text">연결 확인 중…</span>
+    </button>
+    <span class="visually-hidden" id="status-desc">누르면 서버 연결 상태를 다시 확인합니다.</span>
+  </header>
+
+  <main id="main">
+    <section class="card write" aria-labelledby="write-label">
+      <form id="diary-form" novalidate>
+        <label class="write__label" id="write-label" for="diary-input">오늘의 한 줄</label>
+        <p class="write__hint" id="write-hint">오늘 있었던 일을 편하게 적어 주세요. Enter를 누르면 기록돼요.</p>
+        <textarea id="diary-input" class="note" name="text" rows="2" maxlength="500"
+                  placeholder="예) 발표를 무사히 끝내서 팀장님께 칭찬받았다"
+                  aria-describedby="write-hint char-counter form-error"
+                  autocomplete="off" spellcheck="false"></textarea>
+        <div class="write__footer">
+          <span class="counter" id="char-counter" aria-live="polite" aria-atomic="true">0 / 500자</span>
+          <button type="submit" class="btn btn--primary" id="submit-btn">기록하기</button>
+        </div>
+        <div class="error" id="form-error" role="alert"></div>
+      </form>
+    </section>
+
+    <div class="loading" id="loading" role="status" hidden>
+      <div class="loading__hearts" aria-hidden="true"><span>♥</span><span>♥</span><span>♥</span></div>
+      <p class="loading__text">마음을 읽고 있어요…</p>
+    </div>
+
+    <section class="result" id="result" aria-live="polite" aria-label="오늘의 마음 분석 결과"></section>
+
+    <section class="card timeline-wrap" id="timeline-section" aria-labelledby="timeline-title" hidden>
+      <h2 class="section-title" id="timeline-title">최근 마음의 흐름</h2>
+      <ol class="timeline" id="timeline"></ol>
+    </section>
+
+    <section class="card history" aria-labelledby="history-title">
+      <div class="history__head">
+        <h2 class="section-title" id="history-title" tabindex="-1">지난 일기</h2>
+        <button type="button" class="btn btn--ghost" id="clear-btn" aria-controls="clear-confirm" aria-expanded="false" hidden>전체 삭제</button>
+      </div>
+      <div class="confirm" id="clear-confirm" role="group" aria-labelledby="clear-confirm-text" hidden>
+        <span id="clear-confirm-text">모든 일기를 지울까요? 되돌릴 수 없어요.</span>
+        <button type="button" class="btn btn--danger" id="clear-yes">모두 지우기</button>
+        <button type="button" class="btn btn--ghost" id="clear-no">취소</button>
+      </div>
+      <p class="empty" id="history-empty">아직 기록된 일기가 없어요. 오늘의 첫 줄을 적어 볼까요?</p>
+      <ul class="entries" id="entries"></ul>
+      <p class="visually-hidden" id="history-live" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>일기는 이 브라우저에만 저장돼요.</p>
+    <p>AI의 말은 위로를 위한 것이며 전문적인 상담을 대신하지 않아요.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API_BASE = location.protocol === 'file:' ? 'http://localhost:3000' : '';
+  var MAX_LEN = 500;
+  var STORAGE_KEY = 'ai-empathy-diary:entries:v1';
+  var MAX_ENTRIES = 200;
+  var REQUEST_TIMEOUT_MS = 45000;
+  var SERVER_OFF_MSG = '서버가 꺼져 있어요. 터미널에서 node server.js를 실행해 주세요.';
+
+  // 감정별 카드 톤. 목록에 없는 값은 DEFAULT_STYLE 사용.
+  var EMOTION_STYLES = {
+    '기쁨':   { emoji: '😊', bg: '#fff3d6', accent: '#f0b13c', tag: '#fde6a8' },
+    '설렘':   { emoji: '🥰', bg: '#ffe9ec', accent: '#ec8a9c', tag: '#fcd3db' },
+    '감사':   { emoji: '🙏', bg: '#fff0e0', accent: '#e59a5b', tag: '#fbd9b8' },
+    '평온':   { emoji: '😌', bg: '#eef5e9', accent: '#8fb27c', tag: '#d6e8cb' },
+    '뿌듯함': { emoji: '😎', bg: '#fdeedd', accent: '#d9894a', tag: '#f7d4b0' },
+    '슬픔':   { emoji: '😢', bg: '#eaf0f7', accent: '#7f9cc0', tag: '#d2deec' },
+    '외로움': { emoji: '🥺', bg: '#efecf6', accent: '#9a8dc2', tag: '#dcd5ee' },
+    '불안':   { emoji: '😟', bg: '#f1f0e6', accent: '#b0a46a', tag: '#e3dfc2' },
+    '분노':   { emoji: '😠', bg: '#fbe8e3', accent: '#d26a55', tag: '#f5cbc0' },
+    '피곤함': { emoji: '😪', bg: '#f2ede8', accent: '#a99583', tag: '#e2d8ce' },
+    '우울':   { emoji: '😔', bg: '#eceef2', accent: '#8a94a8', tag: '#d7dbe4' },
+    '복잡함': { emoji: '😵‍💫', bg: '#f3ecf3', accent: '#b48bb0', tag: '#e6d4e4' }
+  };
+  var DEFAULT_STYLE = { emoji: '📝', bg: '#fff4e6', accent: '#e8a77a', tag: '#fde3cc' };
+
+  function styleFor(emotion) {
+    return Object.prototype.hasOwnProperty.call(EMOTION_STYLES, emotion) ? EMOTION_STYLES[emotion] : DEFAULT_STYLE;
+  }
+  function applyTone(el, emotion) {
+    var s = styleFor(emotion);
+    el.style.setProperty('--emo-bg', s.bg);
+    el.style.setProperty('--emo-accent', s.accent);
+    el.style.setProperty('--emo-tag', s.tag);
+  }
+
+  // ---------- DOM ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $('diary-form');
+  var input = $('diary-input');
+  var counter = $('char-counter');
+  var submitBtn = $('submit-btn');
+  var formError = $('form-error');
+  var loading = $('loading');
+  var result = $('result');
+  var statusBtn = $('server-status');
+  var statusText = $('status-text');
+  var entriesEl = $('entries');
+  var emptyEl = $('history-empty');
+  var clearBtn = $('clear-btn');
+  var clearConfirm = $('clear-confirm');
+  var clearYes = $('clear-yes');
+  var clearNo = $('clear-no');
+  var historyTitle = $('history-title');
+  var historyLive = $('history-live');
+  var timelineSection = $('timeline-section');
+  var timelineEl = $('timeline');
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    return node;
+  }
+
+  // ---------- 날짜 / 인사 ----------
+  function formatToday(d) {
+    try {
+      return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(d);
+    } catch (e) {
+      var days = ['일', '월', '화', '수', '목', '금', '토'];
+      return d.getFullYear() + '년 ' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일 ' + days[d.getDay()] + '요일';
+    }
+  }
+  function greetingFor(d) {
+    var h = d.getHours();
+    if (h < 5) return '늦은 밤까지 수고 많았어요. 오늘 마음은 어땠나요?';
+    if (h < 11) return '좋은 아침이에요. 오늘은 어떤 하루가 될까요?';
+    if (h < 17) return '따뜻한 오후예요. 지금까지 하루는 어땠나요?';
+    if (h < 21) return '오늘 하루도 고생 많았어요. 어떤 일이 있었나요?';
+    return '포근한 밤이에요. 오늘 하루를 한 줄로 남겨 볼까요?';
+  }
+  function formatEntryTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    try {
+      return new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(d);
+    } catch (e) {
+      return d.toLocaleString();
+    }
+  }
+  function formatShortDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  var now = new Date();
+  $('today-date').textContent = formatToday(now);
+  $('greeting').textContent = greetingFor(now);
+
+  // ---------- 저장소 (실패해도 앱은 동작) ----------
+  var memoryEntries = [];
+  function loadEntries() {
+    try {
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return memoryEntries.slice();
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return memoryEntries.slice();
+      return parsed.filter(function (e) { return e && typeof e === 'object' && typeof e.id === 'string'; });
+    } catch (e) {
+      return memoryEntries.slice();
+    }
+  }
+  function saveEntries(list) {
+    memoryEntries = list.slice();
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function makeId() {
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  // ---------- 서버 상태 ----------
+  function setStatus(state, text) {
+    statusBtn.setAttribute('data-state', state);
+    statusText.textContent = text;
+  }
+
+  function fetchWithTimeout(url, options, ms) {
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = null;
+    var opts = options || {};
+    if (ctrl) {
+      opts.signal = ctrl.signal;
+      timer = setTimeout(function () { ctrl.abort(); }, ms);
+    }
+    return fetch(url, opts).finally(function () { if (timer) clearTimeout(timer); });
+  }
+
+  var checkingHealth = false;
+  function checkHealth() {
+    if (checkingHealth) return;
+    checkingHealth = true;
+    setStatus('checking', '연결 확인 중…');
+    fetchWithTimeout(API_BASE + '/api/health', { method: 'GET', cache: 'no-store' }, 5000)
+      .then(function (res) {
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok || !data || data.ok !== true) {
+            setStatus('warn', '서버 응답이 이상해요');
+          } else if (data.hasKey === false) {
+            setStatus('warn', '연결됨 · API 키 없음');
+          } else {
+            setStatus('ok', '연결됨');
+          }
+        });
+      })
+      .catch(function () {
+        setStatus('off', '서버 꺼짐');
+      })
+      .finally(function () { checkingHealth = false; });
+  }
+  statusBtn.addEventListener('click', checkHealth);
+
+  // ---------- 입력 ----------
+  function updateCounter() {
+    var len = input.value.length;
+    counter.textContent = len + ' / ' + MAX_LEN + '자';
+    counter.setAttribute('data-level', len > MAX_LEN ? 'over' : len >= MAX_LEN - 50 ? 'near' : 'ok');
+  }
+
+  function showError(message, withServerHint) {
+    formError.textContent = '';
+    if (withServerHint) {
+      formError.appendChild(document.createTextNode('서버가 꺼져 있어요. 터미널에서 '));
+      formError.appendChild(el('code', null, 'node server.js'));
+      formError.appendChild(document.createTextNode('를 실행해 주세요.'));
+    } else {
+      formError.textContent = message;
+    }
+  }
+  function clearError() {
+    formError.textContent = '';
+    input.removeAttribute('aria-invalid');
+  }
+
+  input.addEventListener('input', function () {
+    // 한 줄 일기: 붙여넣기 등으로 들어온 줄바꿈은 공백으로 바꾼다.
+    if (/[\r\n]/.test(input.value)) {
+      var pos = input.selectionStart;
+      input.value = input.value.replace(/\r\n|[\r\n]/g, ' ');
+      try { input.setSelectionRange(pos, pos); } catch (e) { /* 무시 */ }
+    }
+    updateCounter();
+    if (formError.textContent) clearError();
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    // 한글 IME 조합 중 Enter는 조합 확정용이므로 무시
+    if (e.isComposing || e.keyCode === 229) return;
+    e.preventDefault();
+    if (e.shiftKey) return;
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else submitDiary();
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    submitDiary();
+  });
+
+  var busy = false;
+  function setBusy(on) {
+    busy = on;
+    submitBtn.disabled = on;
+    submitBtn.textContent = on ? '기록하는 중…' : '기록하기';
+    form.setAttribute('aria-busy', on ? 'true' : 'false');
+    loading.hidden = !on;
+  }
+
+  function submitDiary() {
+    if (busy) return;
+    var text = input.value.trim();
+    if (!text) {
+      input.setAttribute('aria-invalid', 'true');
+      showError('한 글자 이상 적어 주세요.');
+      input.focus();
+      return;
+    }
+    if (text.length > MAX_LEN) {
+      input.setAttribute('aria-invalid', 'true');
+      showError(MAX_LEN + '자 이내로 적어 주세요. (지금 ' + text.length + '자)');
+      input.focus();
+      return;
+    }
+    clearError();
+    setBusy(true);
+    result.textContent = '';
+
+    fetchWithTimeout(API_BASE + '/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    }, REQUEST_TIMEOUT_MS)
+      .then(function (res) {
+        return res.json().catch(function () { return null; }).then(function (data) {
+          if (!res.ok) {
+            var msg = data && typeof data.error === 'string' && data.error
+              ? data.error
+              : '분석 중 문제가 생겼어요. (오류 ' + res.status + ') 잠시 후 다시 시도해 주세요.';
+            throw { userMessage: msg };
+          }
+          if (!data || typeof data !== 'object') {
+            throw { userMessage: '서버 응답을 이해하지 못했어요. 잠시 후 다시 시도해 주세요.' };
+          }
+          return data;
+        });
+      })
+      .then(function (data) {
+        if (statusBtn.getAttribute('data-state') !== 'ok') setStatus('ok', '연결됨');
+        var entry = normalizeEntry(data, text);
+        renderResult(entry);
+        var list = loadEntries();
+        list.unshift(entry);
+        if (list.length > MAX_ENTRIES) list.length = MAX_ENTRIES;
+        var saved = saveEntries(list);
+        renderHistory(list);
+        input.value = '';
+        updateCounter();
+        if (!saved) showError('이 브라우저에서는 일기를 저장할 수 없어서, 새로고침하면 사라져요.');
+      })
+      .catch(function (err) {
+        if (err && err.userMessage) {
+          showError(err.userMessage);
+        } else if (err && err.name === 'AbortError') {
+          showError('응답이 너무 오래 걸려요. 잠시 후 다시 시도해 주세요.');
+        } else {
+          setStatus('off', '서버 꺼짐');
+          showError(SERVER_OFF_MSG, true);
+        }
+      })
+      .finally(function () {
+        setBusy(false);
+      });
+  }
+
+  function clampIntensity(v) {
+    var n = Math.round(Number(v));
+    if (!isFinite(n)) return 3;
+    return Math.min(5, Math.max(1, n));
+  }
+
+  function normalizeEntry(data, text) {
+    var emotion = typeof data.emotion === 'string' && data.emotion.trim() ? data.emotion.trim() : '알 수 없음';
+    var emoji = typeof data.emoji === 'string' && data.emoji.trim() ? data.emoji.trim() : styleFor(emotion).emoji;
+    var keywords = Array.isArray(data.keywords)
+      ? data.keywords.filter(function (k) { return typeof k === 'string' && k.trim(); }).slice(0, 8).map(function (k) { return k.trim(); })
+      : [];
+    return {
+      id: makeId(),
+      createdAt: new Date().toISOString(),
+      text: text,
+      emotion: emotion,
+      emoji: emoji,
+      intensity: clampIntensity(data.intensity),
+      keywords: keywords,
+      message: typeof data.message === 'string' ? data.message : '',
+      crisis: data.crisis === true
+    };
+  }
+
+  // ---------- 결과 카드 ----------
+  function buildIntensity(level) {
+    var wrap = el('div', 'intensity');
+    wrap.setAttribute('role', 'img');
+    wrap.setAttribute('aria-label', '감정 강도 5단계 중 ' + level);
+    for (var i = 1; i <= 5; i++) {
+      var h = el('span', 'intensity__heart' + (i <= level ? ' is-on' : ''), '♥');
+      h.setAttribute('aria-hidden', 'true');
+      wrap.appendChild(h);
+    }
+    var lbl = el('span', 'intensity__label', '강도 ' + level + '/5');
+    lbl.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(lbl);
+    return wrap;
+  }
+
+  function buildHelpBox() {
+    var box = el('aside', 'help');
+    box.setAttribute('aria-labelledby', 'help-title');
+    var title = el('p', 'help__title', '혼자 견디지 않아도 괜찮아요');
+    title.id = 'help-title';
+    box.appendChild(title);
+    box.appendChild(el('p', null, '마음이 많이 힘들 때는 지금 바로 이야기를 들어줄 사람이 있어요. 24시간 언제든 연락할 수 있어요.'));
+    var ul = el('ul');
+    [['자살예방상담전화', '109', 'tel:109'], ['정신건강위기상담', '1577-0199', 'tel:15770199']].forEach(function (row) {
+      var li = el('li');
+      li.appendChild(document.createTextNode(row[0] + ' '));
+      var a = el('a', null, row[1]);
+      a.href = row[2];
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    return box;
+  }
+
+  function renderResult(entry) {
+    result.textContent = '';
+    var card = el('article', 'result-card');
+    applyTone(card, entry.emotion);
+    card.setAttribute('aria-labelledby', 'result-emotion');
+
+    var head = el('div', 'result-card__head');
+    var emoji = el('div', 'result-card__emoji', entry.emoji);
+    emoji.setAttribute('aria-hidden', 'true');
+    head.appendChild(emoji);
+
+    var meta = el('div', 'result-card__meta');
+    meta.appendChild(el('p', 'result-card__kicker', '오늘의 마음'));
+    var emo = el('h2', 'result-card__emotion', entry.emotion);
+    emo.id = 'result-emotion';
+    meta.appendChild(emo);
+    meta.appendChild(buildIntensity(entry.intensity));
+    head.appendChild(meta);
+    card.appendChild(head);
+
+    var original = el('p', 'original', entry.text);
+    card.appendChild(original);
+
+    if (entry.keywords.length) {
+      var tags = el('ul', 'tags');
+      tags.setAttribute('aria-label', '키워드');
+      entry.keywords.forEach(function (k) { tags.appendChild(el('li', null, k)); });
+      card.appendChild(tags);
+    }
+
+    if (entry.message) {
+      var letter = el('div', 'letter');
+      letter.appendChild(el('p', 'letter__to', '오늘의 나에게,'));
+      letter.appendChild(el('p', 'letter__body', entry.message));
+      letter.appendChild(el('p', 'letter__from', '- 다정한 일기장이'));
+      card.appendChild(letter);
+    }
+
+    if (entry.crisis) card.appendChild(buildHelpBox());
+
+    result.appendChild(card);
+  }
+
+  // ---------- 지난 일기 ----------
+  function renderHistory(list) {
+    entriesEl.textContent = '';
+    emptyEl.hidden = list.length > 0;
+    clearBtn.hidden = list.length === 0;
+    if (list.length === 0) hideClearConfirm(false);
+
+    list.forEach(function (entry) {
+      var li = el('li', 'entry');
+      applyTone(li, entry.emotion);
+      li.setAttribute('data-id', entry.id);
+
+      var emoji = el('span', 'entry__emoji', entry.emoji || styleFor(entry.emotion).emoji);
+      emoji.setAttribute('aria-hidden', 'true');
+      li.appendChild(emoji);
+
+      var body = el('div', 'entry__body');
+      var meta = el('p', 'entry__meta');
+      meta.appendChild(el('span', 'entry__emotion', entry.emotion || '알 수 없음'));
+      var time = el('time', null, formatEntryTime(entry.createdAt));
+      time.setAttribute('datetime', entry.createdAt || '');
+      meta.appendChild(time);
+      body.appendChild(meta);
+      body.appendChild(el('p', 'entry__text', entry.text || ''));
+      if (entry.message) body.appendChild(el('p', 'entry__message', entry.message));
+      li.appendChild(body);
+
+      var del = el('button', 'entry__delete', '✕');
+      del.type = 'button';
+      del.setAttribute('aria-label', formatEntryTime(entry.createdAt) + ' 일기 삭제');
+      del.addEventListener('click', function () { deleteEntry(entry.id); });
+      li.appendChild(del);
+
+      entriesEl.appendChild(li);
+    });
+
+    renderTimeline(list);
+  }
+
+  function deleteEntry(id) {
+    var list = loadEntries();
+    var idx = -1;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) { idx = i; break; }
+    if (idx === -1) return;
+    list.splice(idx, 1);
+    saveEntries(list);
+    renderHistory(list);
+    historyLive.textContent = '일기 1개를 지웠어요.';
+    // 포커스를 다음 항목의 삭제 버튼(없으면 제목)으로 옮긴다.
+    var buttons = entriesEl.querySelectorAll('.entry__delete');
+    var next = buttons[Math.min(idx, buttons.length - 1)];
+    (next || historyTitle).focus();
+  }
+
+  function showClearConfirm() {
+    clearConfirm.hidden = false;
+    clearBtn.setAttribute('aria-expanded', 'true');
+    clearNo.focus();
+  }
+  function hideClearConfirm(returnFocus) {
+    clearConfirm.hidden = true;
+    clearBtn.setAttribute('aria-expanded', 'false');
+    if (returnFocus && !clearBtn.hidden) clearBtn.focus();
+  }
+  clearBtn.addEventListener('click', function () {
+    if (clearConfirm.hidden) showClearConfirm(); else hideClearConfirm(true);
+  });
+  clearNo.addEventListener('click', function () { hideClearConfirm(true); });
+  clearConfirm.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); hideClearConfirm(true); }
+  });
+  clearYes.addEventListener('click', function () {
+    saveEntries([]);
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) { /* 무시 */ }
+    renderHistory([]);
+    historyLive.textContent = '모든 일기를 지웠어요.';
+    historyTitle.focus();
+  });
+
+  // ---------- 감정 타임라인 (최근 7개, 오래된 것 → 최신) ----------
+  function renderTimeline(list) {
+    timelineEl.textContent = '';
+    var recent = list.slice(0, 7).reverse();
+    timelineSection.hidden = recent.length < 2;
+    recent.forEach(function (entry) {
+      var li = el('li');
+      var label = formatShortDate(entry.createdAt) + ' ' + (entry.emotion || '알 수 없음');
+      var bubble = el('span', 'timeline__emoji', entry.emoji || styleFor(entry.emotion).emoji);
+      bubble.style.borderColor = styleFor(entry.emotion).accent;
+      bubble.setAttribute('aria-hidden', 'true');
+      li.appendChild(bubble);
+      li.appendChild(el('span', 'timeline__label', entry.emotion || '?'));
+      li.appendChild(el('span', 'visually-hidden', formatShortDate(entry.createdAt)));
+      li.title = label;
+      timelineEl.appendChild(li);
+    });
+  }
+
+  // ---------- 시작 ----------
+  updateCounter();
+  memoryEntries = loadEntries();
+  renderHistory(memoryEntries);
+  checkHealth();
+})();
+</script>
+</body>
+</html>
